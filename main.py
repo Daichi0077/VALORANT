@@ -12,16 +12,6 @@ from discord import app_commands
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Flask Webサーバーの設定 ---
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Discord Bot is alive and well!"
-
-def run_flask_app():
-    app.run(host='0.0.0.0', port=os.environ.get('PORT', 8080))
-# --- Flask Webサーバーの設定ここまで ---
 
 
 # Discord Intents
@@ -854,19 +844,5 @@ async def on_ready():
     except Exception as e:
         logging.error(f"スラッシュコマンドの同期中にエラーが発生しました: {e}")
 
-# --- ボットの実行部分 ---
-if __name__ == '__main__':
-    # Webサーバーを別のスレッドで起動する
-    flask_thread = threading.Thread(target=run_flask_app)
-    flask_thread.daemon = True 
-    flask_thread.start()
+bot.run(os.environ['DISCORD_BOT_TOKEN'])
 
-    # Discord Botを起動する
-    try:
-        bot.run(os.environ['DISCORD_BOT_TOKEN'])
-    except KeyError:
-        logging.error("環境変数 'DISCORD_BOT_TOKEN' が設定されていません。ReplitのSecretsタブでトークンを設定してください。")
-    except discord.errors.LoginFailure:
-        logging.error("Botトークンが無効です。ReplitのSecretsで'DISCORD_BOT_TOKEN'を確認してください。")
-    except Exception as e:
-        logging.error(f"ボットの起動中に予期せぬエラーが発生しました: {e}")
