@@ -4,25 +4,36 @@ from discord.ui import View, Button, Select, TextInput, Modal
 import asyncio
 import logging
 import os
-import threading # スレッドはFlaskサーバーのために使われていたので、必要なければ削除可
+import threading
+from flask import Flask
 from datetime import datetime
 from discord import app_commands
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Flask Webサーバーの設定は削除されます ---
+# --- Flask Webサーバーの設定 ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Discord Bot is alive and well!"
+
+def run_flask_app():
+    app.run(host='0.0.0.0', port=os.environ.get('PORT', 8080))
+# --- Flask Webサーバーの設定ここまで ---
+
 
 # Discord Intents
 intents = discord.Intents.default()
 intents.guilds = True
-intents.members = True      # メンバー情報取得に必要
+intents.members = True          # メンバー情報取得に必要
 intents.message_content = True  # コマンドやテキスト内容に必要
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # VCを作成するカテゴリID（あなたのサーバーに合わせて設定してください）
-VC_CATEGORY_ID = 1369086223049687070
+VC_CATEGORY_ID = 1369086223049687070 
 
 # ロールID一覧（あなたのサーバーにあるランクロールIDを設定してください）
 RANK_ROLE_IDS = [
@@ -39,7 +50,7 @@ RANK_ROLE_IDS = [
 ]
 
 # 募集開始ボタンを設置するチャンネルID（例: #募集-ボタン）
-RECRUIT_BUTTON_CHANNEL_ID = 1377062614231810199
+RECRUIT_BUTTON_CHANNEL_ID = 1377062614231810199 
 
 # 募集内容のEmbedを投稿するチャンネルID
 RECRUIT_POST_CHANNEL_ID = 1380821926913769543
@@ -66,9 +77,9 @@ class RecruitFlow:
         self.roles = []
         self.title = ""
         self.vc_channel = None
-        self.message = None
-        self.participants = []
-        self.vc_check_task = None
+        self.message = None 
+        self.participants = [] 
+        self.vc_check_task = None 
 
 class ModeSelect(discord.ui.Select):
     """ゲームモード選択用ドロップダウン"""
@@ -105,9 +116,9 @@ class PeopleSelect(discord.ui.Select):
     def __init__(self, flow: RecruitFlow):
         self.flow = flow
         options = [
-            discord.SelectOption(label="デュオ（あと1人募集）", value="1"),
-            discord.SelectOption(label="トリオ（あと2人募集）", value="2"),
-            discord.SelectOption(label="フルパ（あと4人募集）", value="4")
+            discord.SelectOption(label="デュオ（あと1人募集）", value="1"), 
+            discord.SelectOption(label="トリオ（あと2人募集）", value="2"), 
+            discord.SelectOption(label="フルパ（あと4人募集）", value="4")  
         ]
         super().__init__(placeholder="募集人数を選択", options=options)
 
@@ -118,7 +129,7 @@ class PeopleSelect(discord.ui.Select):
         self.flow = active_recruit_flows[interaction.user.id]
 
         self.flow.people_to_recruit = int(self.values[0])
-        self.flow.total_party_size = self.flow.people_to_recruit + 1
+        self.flow.total_party_size = self.flow.people_to_recruit + 1 
         await interaction.response.edit_message(
             content="次に対象ランクを選んでください：",
             view=RankSelectView(self.flow, interaction.guild)
@@ -197,7 +208,7 @@ class TitleModal(discord.ui.Modal, title="募集タイトルを入力"):
     def __init__(self, flow: RecruitFlow, original_interaction: discord.Interaction):
         super().__init__()
         self.flow = flow
-        self.original_interaction = original_interaction
+        self.original_interaction = original_interaction 
         self.title_input = TextInput(label="募集タイトル", placeholder="例：気軽にどうぞ！", max_length=100)
         self.add_item(self.title_input)
 
@@ -256,11 +267,11 @@ async def create_vc_and_post_embed(interaction: discord.Interaction, flow: Recru
     # === VC名の変更ここから ===
     # 現在アクティブな募集の数を数える (募集番号のため)
     # active_recruit_flows には、募集主のIDがキーとして入っているので、その数を数える
-    recruit_number = len(active_recruit_flows)
+    recruit_number = len(active_recruit_flows) # VCが作成される前に募集フローが追加されているはずなので、これまでの数 + 1 が現在の番号になります
     # 募集主のIDがactive_recruit_flowsに追加された後にこの関数が呼ばれるため、
     # 新しいVCの番号は現在のactive_recruit_flowsの長さと同じになる (1から始まるため)
     if interaction.user.id not in active_recruit_flows: # 念のため、もしこのフローがまだ追加されていなければ+1
-        recruit_number += 1
+        recruit_number += 1 
 
     # VC名に含めるゲームモードを決定
     game_mode_display = "不明"
@@ -345,7 +356,7 @@ async def create_vc_and_post_embed(interaction: discord.Interaction, flow: Recru
         logging.error(f"募集Embedの送信に失敗しました: {e} (Webhook Unknown)。チャンネルIDが正しいか確認してください。")
         if vc_channel:
             try:
-                await vc_channel.edit(name=f"❌エラーVC-{interaction.user.display_name}")
+                await vc_channel.edit(name=f"❌エラーVC-{interaction.user.display_name}") 
                 logging.info(f"エラーのためVC名を '{vc_channel.name}' に変更しました。")
                 await interaction.followup.send("募集メッセージの送信に失敗しました。VCは作成されましたが、手動でご確認ください。", ephemeral=True)
             except Exception as vc_edit_e:
@@ -357,7 +368,7 @@ async def create_vc_and_post_embed(interaction: discord.Interaction, flow: Recru
         logging.error(f"募集Embedの送信中に予期せぬエラー: {e}")
         if vc_channel:
             try:
-                await vc_channel.edit(name=f"❌エラーVC-{interaction.user.display_name}")
+                await vc_channel.edit(name=f"❌エラーVC-{interaction.user.display_name}") 
                 logging.info(f"エラーのためVC名を '{vc_channel.name}' に変更しました。")
                 await interaction.followup.send("募集メッセージの送信中にエラーが発生しました。VCは作成されましたが、手動でご確認ください。", ephemeral=True)
             except Exception as vc_edit_e:
@@ -395,14 +406,14 @@ class ParticipantView(View):
             current_participants_text = "現在参加者はいません。"
 
         embed.set_field_at(
-            index=0,
+            index=0, 
             name=f"現在の参加者 ({len(self.flow.participants)}/{self.flow.total_party_size})",
             value=current_participants_text,
             inline=False
         )
 
         remaining_slots = self.flow.total_party_size - len(self.flow.participants)
-        remaining_slots = max(0, remaining_slots)
+        remaining_slots = max(0, remaining_slots) 
 
         embed.description = (
             f"**モード：** {self.flow.mode}\n"
@@ -448,7 +459,7 @@ class ParticipantView(View):
 
         if len(self.flow.participants) >= self.flow.total_party_size:
             await interaction.response.send_message("募集人数の上限に達しています。", ephemeral=True)
-            await self.update_embed()
+            await self.update_embed() 
             return
 
         self.flow.participants.append(interaction.user)
@@ -539,7 +550,7 @@ class ParticipantView(View):
 async def end_recruit_flow(recruiter_id: int):
     """募集フローを終了させ、関連リソース（VC、メッセージ、タスク）をクリーンアップするヘルパー関数"""
     if recruiter_id not in active_recruit_flows:
-        return
+        return 
 
     flow_to_end = active_recruit_flows[recruiter_id]
 
@@ -619,8 +630,7 @@ async def monitor_vc_for_empty(flow: RecruitFlow):
                             except discord.NotFound:
                                 logging.warning(f"孤立募集メッセージ ID {flow.message.id} が見つかりませんでした。")
                                 pass
-                            break # VCが空になったため、監視ループを終了
-                    break # VCが空になったため、監視ループを終了
+                        break
 
             await asyncio.sleep(30)
 
@@ -654,7 +664,7 @@ async def 募集開始(ctx):
 
 class RecruitButtonView(View):
     """募集開始ボタンを含むView"""
-    def __init__(self):
+    def __init__(self): 
         super().__init__()
 
     @discord.ui.button(label="📢 募集を開始", style=discord.ButtonStyle.success, custom_id="start_recruit_button")
@@ -693,7 +703,7 @@ async def end_recruit(interaction: discord.Interaction):
         await interaction.response.send_message("現在、あなたには進行中の募集がありません。", ephemeral=True)
         return
 
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=True) 
     logging.info(f"募集主 {interaction.user.display_name} がスラッシュコマンド /募集終了 を実行しました。")
 
     try:
@@ -735,7 +745,7 @@ async def 停止(ctx):
     await ctx.send("🔴 Botをオフラインにします。")
 
     # 全てのアクティブな募集フローを終了させる
-    for recruiter_id in list(active_recruit_flows.keys()):
+    for recruiter_id in list(active_recruit_flows.keys()): 
         await end_recruit_flow(recruiter_id)
     logging.info("全ての募集フローとVC監視タスクを停止しました。")
 
@@ -789,7 +799,7 @@ async def manage_start_button_message():
         return
 
     message_id = start_button_message_info.get(channel.id)
-    view = RecruitButtonView()
+    view = RecruitButtonView() 
 
     if message_id:
         try:
@@ -800,79 +810,63 @@ async def manage_start_button_message():
             logging.warning(f"募集開始メッセージ (ID: {message_id}) がチャンネル {channel.name} から見つかりません。再投稿します。")
             new_message = await channel.send("募集を開始するには以下のボタンを押してください：", view=view)
             start_button_message_info[channel.id] = new_message.id
-            logging.info(f"募集開始メッセージを再投稿しました (New ID: {new_message.id})。")
+            logging.info(f"募集開始メッセージを新規送信しました。(ID: {new_message.id})")
         except Exception as e:
-            logging.error(f"既存の募集開始メッセージ更新中にエラー: {e}")
-            # エラーが発生した場合も再投稿を試みる
+            logging.error(f"既存の募集開始メッセージ更新中に予期せぬエラー: {e}")
             try:
                 new_message = await channel.send("募集を開始するには以下のボタンを押してください：", view=view)
                 start_button_message_info[channel.id] = new_message.id
-                logging.info(f"エラー後の募集開始メッセージを再投稿しました (New ID: {new_message.id})。")
+                logging.info(f"募集開始メッセージを新規送信しました。(ID: {new_message.id}) (エラー回復)")
             except Exception as e_resend:
-                logging.error(f"募集開始メッセージの再投稿中にエラー: {e_resend}")
+                logging.error(f"募集開始メッセージ再送信中にエラー: {e_resend}")
     else:
         try:
             new_message = await channel.send("募集を開始するには以下のボタンを押してください：", view=view)
             start_button_message_info[channel.id] = new_message.id
-            logging.info(f"募集開始メッセージを初回投稿しました (ID: {new_message.id})。")
+            logging.info(f"募集開始メッセージを新規送信しました。(ID: {new_message.id})")
         except Exception as e:
-            logging.error(f"募集開始メッセージの初回投稿中にエラー: {e}")
+            logging.error(f"募集開始メッセージの初回送信中にエラー: {e}")
 
 
 @bot.event
 async def on_ready():
-    logging.info(f'Logged in as {bot.user.name} (ID: {bot.user.id})')
-    logging.info('------')
+    logging.info(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    logging.info(f'Guilds: {len(bot.guilds)}')
 
-    # スラッシュコマンドを同期
-    try:
-        synced = await bot.tree.sync()
-        logging.info(f"Synced {len(synced)} slash command(s).")
-    except Exception as e:
-        logging.error(f"Failed to sync slash commands: {e}")
-
-    # 既存の募集フローをチェックし、VC監視タスクを再開（ボット再起動時）
-    # この部分のロジックは、永続化機構がないため、実際にはbotの再起動で失われる可能性がある
-    # ここでは便宜上、起動時にアクティブ募集がないことを前提とするか、永続化された情報をロードする
-    # 例: 起動時にactive_recruit_flowsが空であることを確認
-    if active_recruit_flows:
-        logging.warning("ボット起動時にactive_recruit_flowsに既存のデータがありますが、これは永続化されていないため、意図しない状態の可能性があります。")
-        # 必要であれば、ここで過去の募集フローをクリアする処理を追加
-        # active_recruit_flows.clear()
-
-    # VCカテゴリの確認（起動時に存在するかチェック）
-    vc_category = bot.get_channel(VC_CATEGORY_ID)
-    if not vc_category:
-        logging.error(f"設定されたVCカテゴリID {VC_CATEGORY_ID} が見つかりません。VC作成機能が正常に動作しない可能性があります。")
-    elif not isinstance(vc_category, discord.CategoryChannel):
-        logging.error(f"設定されたVCカテゴリID {VC_CATEGORY_ID} はカテゴリチャンネルではありません。VC作成機能が正常に動作しない可能性があります。")
-
-
-    # 定期実行タスクを開始
-    if not update_bot_status.is_running():
-        update_bot_status.start()
-        logging.info("Botステータス更新タスクを開始しました。")
-
-    if not manage_start_button_message.is_running():
-        manage_start_button_message.start()
+    # 募集開始ボタン管理タスクを開始
+    if not hasattr(bot, 'start_button_task') or not bot.start_button_task.is_running():
+        bot.start_button_task = manage_start_button_message
+        bot.start_button_task.start()
         logging.info("募集開始ボタン管理タスクを開始しました。")
 
+    # ステータス更新タスクを開始
+    if not hasattr(bot, 'status_update_task') or not bot.status_update_task.is_running():
+        bot.status_update_task = update_bot_status
+        bot.status_update_task.start()
+        logging.info("ステータス更新タスクを開始しました。")
 
-# ボットのトークンを環境変数から取得
-# `os.getenv` または Replit の Secrets 機能を使用
-TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-if TOKEN is None:
-    logging.error("DISCORD_BOT_TOKEN が環境変数に設定されていません。")
-    exit(1) # トークンがない場合は終了
-
-# メインの実行ブロック
-if __name__ == "__main__":
-    # Flask Webサーバーのスレッド起動は削除
-    # threading.Thread(target=run_flask_app).start() # これを削除
-
+    # スラッシュコマンドを同期する
     try:
-        bot.run(TOKEN)
-    except discord.errors.LoginFailure as e:
-        logging.error(f"Discordログインに失敗しました。トークンが正しくない可能性があります: {e}")
+        synced = await bot.tree.sync() 
+        logging.info(f"スラッシュコマンド {len(synced)} 件を同期しました。")
+        for command in synced:
+            logging.info(f" - / {command.name}")
     except Exception as e:
-        logging.error(f"ボットの実行中に予期せぬエラーが発生しました: {e}")
+        logging.error(f"スラッシュコマンドの同期中にエラーが発生しました: {e}")
+
+# --- ボットの実行部分 ---
+if __name__ == '__main__':
+    # Webサーバーを別のスレッドで起動する
+    flask_thread = threading.Thread(target=run_flask_app)
+    flask_thread.daemon = True 
+    flask_thread.start()
+
+    # Discord Botを起動する
+    try:
+        bot.run(os.environ['DISCORD_BOT_TOKEN'])
+    except KeyError:
+        logging.error("環境変数 'DISCORD_BOT_TOKEN' が設定されていません。ReplitのSecretsタブでトークンを設定してください。")
+    except discord.errors.LoginFailure:
+        logging.error("Botトークンが無効です。ReplitのSecretsで'DISCORD_BOT_TOKEN'を確認してください。")
+    except Exception as e:
+        logging.error(f"ボットの起動中に予期せぬエラーが発生しました: {e}")
